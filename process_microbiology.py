@@ -31,50 +31,49 @@ chart_coords = {
     'C1': (0, 2), 'C2': (1, 2), 'C3': (2, 2), 'C4': (3, 2),
 }
 
-# Layout mapping & sorting high to low dose
+# Dose data sorted High to Low with Health Status mapping:
+# #1~#4: Healthy (Green)
+# #5: Sub-healthy (Yellow)
+# #6~#12: Infection (Red)
 dose_data = [
-    ('A1', '50 ug/mL\n(No Bacteria)', 50.0),
-    ('A2', '25 ug/mL', 25.0),
-    ('A3', '12.5 ug/mL', 12.5),
-    ('A4', '6.25 ug/mL', 6.25),
-    ('B4', '3.13 ug/mL', 3.13),
-    ('B3', '1.56 ug/mL', 1.56),
-    ('B2', '0.78 ug/mL', 0.78),
-    ('B1', '0.39 ug/mL', 0.39),
-    ('C1', '0.195 ug/mL', 0.195),
-    ('C2', '0.098 ug/mL', 0.098),
-    ('C3', '0.098 ug/mL', 0.098),
-    ('C4', 'No antibiotic\n(0 ug/mL)', 0.0),
+    ('A1', '50 ug/mL\n(No Bacteria)', 50.0, 'Healthy', '#10B981', (16, 185, 129)),
+    ('A2', '25 ug/mL', 25.0, 'Healthy', '#10B981', (16, 185, 129)),
+    ('A3', '12.5 ug/mL', 12.5, 'Healthy', '#10B981', (16, 185, 129)),
+    ('A4', '6.25 ug/mL', 6.25, 'Healthy', '#10B981', (16, 185, 129)),
+    ('B4', '3.13 ug/mL', 3.13, 'Sub-Healthy', '#F59E0B', (245, 158, 11)),
+    ('B3', '1.56 ug/mL', 1.56, 'Infection', '#EF4444', (239, 68, 68)),
+    ('B2', '0.78 ug/mL', 0.78, 'Infection', '#EF4444', (239, 68, 68)),
+    ('B1', '0.39 ug/mL', 0.39, 'Infection', '#EF4444', (239, 68, 68)),
+    ('C1', '0.195 ug/mL', 0.195, 'Infection', '#EF4444', (239, 68, 68)),
+    ('C2', '0.098 ug/mL', 0.098, 'Infection', '#EF4444', (239, 68, 68)),
+    ('C3', '0.098 ug/mL', 0.098, 'Infection', '#EF4444', (239, 68, 68)),
+    ('C4', 'No antibiotic\n(0 ug/mL)', 0.0, 'Infection', '#EF4444', (239, 68, 68)),
 ]
 
 carved_well_images = {}
 split_chart_images = {}
 
-# Process each of 12 positions
-for idx, (well_id, dose_str, dose_val) in enumerate(dose_data):
+# Extract each position
+for idx, (well_id, dose_str, dose_val, status, color_hex, status_rgb) in enumerate(dose_data):
     # --- Extract & Highlight Well ---
     cx, cy = well_centers[well_id]
     x1, y1 = cx - r_well - 5, cy - r_well - 5
     x2, y2 = cx + r_well + 5, cy + r_well + 5
 
-    # Crop square area around well
     crop_w = wells_img[y1:y2, x1:x2].copy()
-
-    # Create circular masked image with RGBA background
     h_c, w_c, _ = crop_w.shape
     mask = np.zeros((h_c, w_c), dtype=np.uint8)
     cv2.circle(mask, (w_c//2, h_c//2), r_well, 255, -1)
 
-    # Highlight ring around circle
+    # Highlight ring around well matching status color (BGR for opencv)
+    bgr_color = (status_rgb[2], status_rgb[1], status_rgb[0])
     highlight_img = crop_w.copy()
-    cv2.circle(highlight_img, (w_c//2, h_c//2), r_well, (0, 220, 255), 4) # Vibrant cyan ring outline
-    cv2.circle(highlight_img, (w_c//2, h_c//2), r_well + 2, (255, 255, 255), 2) # Outer white accent border
+    cv2.circle(highlight_img, (w_c//2, h_c//2), r_well, bgr_color, 4)
+    cv2.circle(highlight_img, (w_c//2, h_c//2), r_well + 2, (255, 255, 255), 2)
 
-    # Convert to RGBA
     b, g, r_ch = cv2.split(highlight_img)
     rgba = cv2.merge([b, g, r_ch, mask])
 
-    # Save individual carved well file with rank and well_id
     out_well_path1 = os.path.join(carved_dir, f'rank_{idx+1:02d}_well_{well_id}.png')
     out_well_path2 = os.path.join(carved_dir, f'well_{well_id}.png')
     cv2.imwrite(out_well_path1, rgba)
@@ -89,8 +88,8 @@ for idx, (well_id, dose_str, dose_val) in enumerate(dose_data):
     cy2 = cy1 + chart_h
     crop_chart = charts_img[cy1:cy2, cx1:cx2].copy()
 
-    # Add a thin clean border around chart
-    cv2.rectangle(crop_chart, (0, 0), (chart_w-1, chart_h-1), (200, 200, 200), 1)
+    # Border matching status color
+    cv2.rectangle(crop_chart, (0, 0), (chart_w-1, chart_h-1), bgr_color, 2)
 
     out_chart_path1 = os.path.join(split_dir, f'rank_{idx+1:02d}_chart_{well_id}.png')
     out_chart_path2 = os.path.join(split_dir, f'chart_{well_id}.png')
@@ -98,7 +97,7 @@ for idx, (well_id, dose_str, dose_val) in enumerate(dose_data):
     cv2.imwrite(out_chart_path2, crop_chart)
     split_chart_images[well_id] = Image.fromarray(cv2.cvtColor(crop_chart, cv2.COLOR_BGR2RGB))
 
-print("Extracted 12 carved wells and 12 split charts.")
+print("Extracted 12 carved wells and 12 split charts with health status color coding.")
 
 # --- Build High-Resolution Composite Image ---
 num_cols = 12
@@ -108,10 +107,12 @@ chart_disp_w = 280
 chart_disp_h = int(chart_disp_w * (chart_h / chart_w))
 
 padding_x = 40
-header_height = 130
+header_height = 160
 col_header_height = 90
-row1_y = header_height + col_header_height + 20
-row2_y = row1_y + well_size + 60
+row1_y = header_height + col_header_height + 20 # Wells y start
+colorbar_height = 36
+gap_well_chart = 75
+row2_y = row1_y + well_size + gap_well_chart # Charts y start
 footer_height = 40
 
 canvas_w = padding_x * 2 + num_cols * col_width
@@ -121,23 +122,40 @@ canvas_h = row2_y + chart_disp_h + footer_height
 canvas = Image.new('RGB', (canvas_w, canvas_h), (18, 24, 38))
 draw = ImageDraw.Draw(canvas)
 
-# Load fonts with clean fallbacks
+# Fonts
 try:
     font_title = ImageFont.truetype('/System/Library/Fonts/Supplemental/Arial.ttf', 32)
     font_subtitle = ImageFont.truetype('/System/Library/Fonts/Supplemental/Arial.ttf', 18)
+    font_legend = ImageFont.truetype('/System/Library/Fonts/Supplemental/Arial.ttf', 16)
     font_rank = ImageFont.truetype('/System/Library/Fonts/Supplemental/Arial.ttf', 20)
     font_dose = ImageFont.truetype('/System/Library/Fonts/Supplemental/Arial.ttf', 16)
     font_label = ImageFont.truetype('/System/Library/Fonts/Supplemental/Arial.ttf', 14)
+    font_bar = ImageFont.truetype('/System/Library/Fonts/Supplemental/Arial.ttf', 15)
 except Exception:
-    font_title = font_subtitle = font_rank = font_dose = font_label = ImageFont.load_default()
+    font_title = font_subtitle = font_legend = font_rank = font_dose = font_label = font_bar = ImageFont.load_default()
 
 # Header background banner
 draw.rectangle([(0, 0), (canvas_w, header_height)], fill=(28, 36, 56))
 draw.text((padding_x, 22), "Microbiology Antibiotic Dose Response Assay", fill=(255, 255, 255), font=font_title)
-draw.text((padding_x, 72), "12 Wells & 12 Aligned Growth Charts Sorted by Antibiotic Dose (High -> Low)", fill=(0, 210, 255), font=font_subtitle)
+draw.text((padding_x, 68), "12 Wells & 12 Aligned Growth Charts Sorted by Antibiotic Dose (High -> Low)", fill=(0, 210, 255), font=font_subtitle)
+
+# Legend Bar in Header
+legend_y = 110
+# Healthy indicator
+draw.rectangle([(padding_x, legend_y), (padding_x + 18, legend_y + 18)], fill=(16, 185, 129))
+draw.text((padding_x + 26, legend_y), "Healthy (#1 - #4)", fill=(255, 255, 255), font=font_legend)
+
+# Sub-Healthy indicator
+draw.rectangle([(padding_x + 220, legend_y), (padding_x + 238, legend_y + 18)], fill=(245, 158, 11))
+draw.text((padding_x + 246, legend_y), "Sub-healthy (#5)", fill=(255, 255, 255), font=font_legend)
+
+# Infection indicator
+draw.rectangle([(padding_x + 440, legend_y), (padding_x + 458, legend_y + 18)], fill=(239, 68, 68))
+draw.text((padding_x + 466, legend_y), "Infection (#6 - #12)", fill=(255, 255, 255), font=font_legend)
+
 
 # Process 12 sorted items in a row
-for idx, (well_id, dose_str, dose_val) in enumerate(dose_data):
+for idx, (well_id, dose_str, dose_val, status, color_hex, status_rgb) in enumerate(dose_data):
     col_x = padding_x + idx * col_width
     center_x = col_x + col_width // 2
 
@@ -152,7 +170,7 @@ for idx, (well_id, dose_str, dose_val) in enumerate(dose_data):
     dose_lines = dose_str.split('\n')
     y_text = header_height + 55
     for l_idx, line in enumerate(dose_lines):
-        color = (100, 255, 180) if l_idx == 0 else (180, 180, 180)
+        color = status_rgb if l_idx == 0 else (180, 180, 180)
         draw.text((center_x, y_text + l_idx * 18), line, fill=color, font=font_dose, anchor='mm')
 
     # Paste Carved Well
@@ -165,11 +183,24 @@ for idx, (well_id, dose_str, dose_val) in enumerate(dose_data):
     if idx == 0:
         draw.text((padding_x + 10, row1_y - 25), "WELLS (Carved & Highlighted)", fill=(255, 255, 255), font=font_label)
 
-    # Alignment arrow / line between well and chart
-    line_x = center_x
-    draw.line([(line_x, well_y + well_size + 8), (line_x, row2_y - 12)], fill=(0, 180, 230), width=2)
-    # Arrowhead pointing down
-    draw.polygon([(line_x - 5, row2_y - 14), (line_x + 5, row2_y - 14), (line_x, row2_y - 6)], fill=(0, 180, 230))
+    # --- COLOR-BAR IN-BETWEEN WELL AND CHART ---
+    bar_y1 = well_y + well_size + 15
+    bar_y2 = bar_y1 + colorbar_height
+    bar_w = 260
+    bar_x1 = center_x - bar_w // 2
+    bar_x2 = center_x + bar_w // 2
+
+    # Draw rounded rectangle color bar
+    draw.rounded_rectangle([(bar_x1, bar_y1), (bar_x2, bar_y2)], radius=8, fill=status_rgb, outline=(255, 255, 255), width=1)
+    
+    # Text inside color bar
+    text_color = (0, 0, 0) if status == 'Sub-Healthy' else (255, 255, 255)
+    draw.text((center_x, bar_y1 + colorbar_height // 2), status.upper(), fill=text_color, font=font_bar, anchor='mm')
+
+    # Connecting vertical arrows
+    draw.line([(center_x, well_y + well_size + 2), (center_x, bar_y1 - 2)], fill=status_rgb, width=2)
+    draw.line([(center_x, bar_y2 + 2), (center_x, row2_y - 8)], fill=status_rgb, width=2)
+    draw.polygon([(center_x - 5, row2_y - 10), (center_x + 5, row2_y - 10), (center_x, row2_y - 3)], fill=status_rgb)
 
     # Paste Split Chart
     chart_img = split_chart_images[well_id].resize((chart_disp_w, chart_disp_h), Image.Resampling.LANCZOS)
@@ -177,8 +208,8 @@ for idx, (well_id, dose_str, dose_val) in enumerate(dose_data):
     chart_y = row2_y
     canvas.paste(chart_img, (chart_x, chart_y))
 
-    # Chart border accent
-    draw.rectangle([(chart_x, chart_y), (chart_x + chart_disp_w, chart_y + chart_disp_h)], outline=(60, 80, 120), width=1)
+    # Chart border matching status color
+    draw.rectangle([(chart_x, chart_y), (chart_x + chart_disp_w, chart_y + chart_disp_h)], outline=status_rgb, width=2)
 
     # Row label for Charts
     if idx == 0:
@@ -186,4 +217,4 @@ for idx, (well_id, dose_str, dose_val) in enumerate(dose_data):
 
 out_composite_path = os.path.join(ws, 'sorted_wells_and_charts_row.png')
 canvas.save(out_composite_path)
-print(f"Updated composite image saved to {out_composite_path}")
+print(f"Updated color-bar composite image saved to {out_composite_path}")
