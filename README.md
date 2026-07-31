@@ -4,9 +4,15 @@
 ![OpenCV](https://img.shields.io/badge/OpenCV-Image%20Processing-5C3EE8?style=flat&logo=opencv&logoColor=white)
 ![Pillow](https://img.shields.io/badge/Pillow-PIL-000000?style=flat)
 
-An automated image processing and analysis pipeline for microbiology dose-response assays. 
+An automated image processing and analysis pipeline for microbiology dose-response assays.
 
 This repository processes 12-well microplate photos (`12-wells.jpeg`), splits multi-panel growth curves (`12-charts.jpeg`), correlates them 1-to-1 with experimental layout concentration annotations (`12-layout.png`), and outputs a high-to-low antibiotic concentration sorted visualization.
+
+---
+
+## 💬 Original Prompt
+
+> "I have 3 pictures (12 wells , 12 charts, 12 layout). 1. For the 12 wells, please highlight each well and carve out as an image (totally 12).  2. For the 12 charts, split into 12 individual charts. 3. Now create a new image, line the 12 carved-out wells in a row, and line the 12 charts in a row, below the wells (1 chart aligns with 1 well).   Keep in mind, the locations of wells and charts in original pictures have 1-1 mapping, and when making them in a row, I want to sort (high => low) by the antibiotic doses info in the 12-layout picture."
 
 ---
 
