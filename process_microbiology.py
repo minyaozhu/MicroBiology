@@ -4,15 +4,19 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 ws = '/Users/minyaozhu/Desktop/MicroBiology'
-carved_dir = os.path.join(ws, 'carved_wells')
-split_dir = os.path.join(ws, 'split_charts')
-os.makedirs(carved_dir, exist_ok=True)
-os.makedirs(split_dir, exist_ok=True)
 
-# 1. Load images
+carved_dir = os.path.join(ws, 'carved_wells')
+split_multi_dir = os.path.join(ws, 'split_charts_multi')
+split_single_dir = os.path.join(ws, 'split_charts_single')
+
+os.makedirs(carved_dir, exist_ok=True)
+os.makedirs(split_multi_dir, exist_ok=True)
+os.makedirs(split_single_dir, exist_ok=True)
+
+# 1. Load source images
 wells_img = cv2.imread(os.path.join(ws, '12-wells.jpeg'))
-# Use new high-res single chart image 12-chart-single.png
-charts_img = cv2.imread(os.path.join(ws, '12-chart-single.png'))
+charts_multi_img = cv2.imread(os.path.join(ws, '12-charts.jpeg'))
+charts_single_img = cv2.imread(os.path.join(ws, '12-chart-single.png'))
 
 # Centers and radius for wells (1024x650)
 well_centers = {
@@ -22,40 +26,24 @@ well_centers = {
 }
 r_well = 102
 
-# Coordinates in 12-chart-single.png (2498 x 1294)
-# 4 columns, 3 rows cropped precisely to remove global X/Y legends ("Signal (a.u.)", "Time (a.u.)")
-col_bounds = [
-    (90, 625),
-    (700, 1235),
-    (1300, 1835),
-    (1900, 2435)
-]
-row_bounds = [
-    (0, 350),
-    (400, 750),
-    (800, 1150)
-]
-
-# Map well_id to (col_index, row_index) in 12-chart-single.png
-chart_single_coords = {
-    'A1': (0, 0), # Panel 1
-    'A2': (1, 0), # Panel 2
-    'A3': (2, 0), # Panel 3
-    'A4': (3, 0), # Panel 4
-    'B4': (3, 1), # Panel 5
-    'B3': (2, 1), # Panel 6
-    'B2': (1, 1), # Panel 7
-    'B1': (0, 1), # Panel 8
-    'C1': (0, 2), # Panel 9
-    'C2': (1, 2), # Panel 10
-    'C3': (2, 2), # Panel 11
-    'C4': (3, 2), # Panel 12
+# Multi-line chart grid dimensions (1024x462)
+chart_w_multi = 1024 // 4
+chart_h_multi = 462 // 3
+chart_multi_coords = {
+    'A1': (0, 0), 'A2': (1, 0), 'A3': (2, 0), 'A4': (3, 0),
+    'B1': (0, 1), 'B2': (1, 1), 'B3': (2, 1), 'B4': (3, 1),
+    'C1': (0, 2), 'C2': (1, 2), 'C3': (2, 2), 'C4': (3, 2),
 }
 
-# Dose data sorted High to Low with Health Status mapping:
-# #1~#4: Healthy (Green)
-# #5: Sub-healthy (Yellow)
-# #6~#12: Infection (Red)
+# Single-line chart bounds in 12-chart-single.png (2498 x 1294)
+col_bounds_single = [(90, 625), (700, 1235), (1300, 1835), (1900, 2435)]
+row_bounds_single = [(0, 350), (400, 750), (800, 1150)]
+chart_single_coords = {
+    'A1': (0, 0), 'A2': (1, 0), 'A3': (2, 0), 'A4': (3, 0),
+    'B4': (3, 1), 'B3': (2, 1), 'B2': (1, 1), 'B1': (0, 1),
+    'C1': (0, 2), 'C2': (1, 2), 'C3': (2, 2), 'C4': (3, 2),
+}
+
 dose_data = [
     ('A1', '50 ug/mL\n(No Bacteria)', 50.0, 'Healthy', '#10B981', (16, 185, 129)),
     ('A2', '25 ug/mL', 25.0, 'Healthy', '#10B981', (16, 185, 129)),
@@ -71,11 +59,12 @@ dose_data = [
     ('C4', 'No antibiotic\n(0 ug/mL)', 0.0, 'Infection', '#EF4444', (239, 68, 68)),
 ]
 
-carved_well_images_cyan = {}
-carved_well_images_status = {}
-split_chart_images = {}
+carved_well_cyan = {}
+carved_well_status = {}
+split_multi_images = {}
+split_single_images = {}
 
-# Extract each position
+# Process each position
 for idx, (well_id, dose_str, dose_val, status, color_hex, status_rgb) in enumerate(dose_data):
     cx, cy = well_centers[well_id]
     x1, y1 = cx - r_well - 5, cy - r_well - 5
@@ -86,46 +75,47 @@ for idx, (well_id, dose_str, dose_val, status, color_hex, status_rgb) in enumera
     mask = np.zeros((h_c, w_c), dtype=np.uint8)
     cv2.circle(mask, (w_c//2, h_c//2), r_well, 255, -1)
 
-    # 1) Cyan highlight (V1)
-    highlight_v1 = crop_w.copy()
-    cv2.circle(highlight_v1, (w_c//2, h_c//2), r_well, (0, 220, 255), 4)
-    cv2.circle(highlight_v1, (w_c//2, h_c//2), r_well + 2, (255, 255, 255), 2)
-    b, g, r_ch = cv2.split(highlight_v1)
-    rgba_v1 = cv2.merge([b, g, r_ch, mask])
-    carved_well_images_cyan[well_id] = Image.fromarray(cv2.cvtColor(rgba_v1, cv2.COLOR_BGRA2RGBA))
+    # Cyan well (V1)
+    hl_v1 = crop_w.copy()
+    cv2.circle(hl_v1, (w_c//2, h_c//2), r_well, (0, 220, 255), 4)
+    cv2.circle(hl_v1, (w_c//2, h_c//2), r_well + 2, (255, 255, 255), 2)
+    b, g, r_ch = cv2.split(hl_v1)
+    carved_well_cyan[well_id] = Image.fromarray(cv2.cvtColor(cv2.merge([b, g, r_ch, mask]), cv2.COLOR_BGRA2RGBA))
 
-    # 2) Status color highlight (V2)
+    # Status color well (V2)
     bgr_color = (status_rgb[2], status_rgb[1], status_rgb[0])
-    highlight_v2 = crop_w.copy()
-    cv2.circle(highlight_v2, (w_c//2, h_c//2), r_well, bgr_color, 4)
-    cv2.circle(highlight_v2, (w_c//2, h_c//2), r_well + 2, (255, 255, 255), 2)
-    b, g, r_ch = cv2.split(highlight_v2)
+    hl_v2 = crop_w.copy()
+    cv2.circle(hl_v2, (w_c//2, h_c//2), r_well, bgr_color, 4)
+    cv2.circle(hl_v2, (w_c//2, h_c//2), r_well + 2, (255, 255, 255), 2)
+    b, g, r_ch = cv2.split(hl_v2)
     rgba_v2 = cv2.merge([b, g, r_ch, mask])
-    carved_well_images_status[well_id] = Image.fromarray(cv2.cvtColor(rgba_v2, cv2.COLOR_BGRA2RGBA))
-
-    # Save files
-    cv2.imwrite(os.path.join(carved_dir, f'rank_{idx+1:02d}_well_{well_id}.png'), rgba_v2)
+    carved_well_status[well_id] = Image.fromarray(cv2.cvtColor(rgba_v2, cv2.COLOR_BGRA2RGBA))
     cv2.imwrite(os.path.join(carved_dir, f'well_{well_id}.png'), rgba_v2)
 
-    # --- Extract Chart from 12-chart-single.png ---
-    col_i, row_i = chart_single_coords[well_id]
-    cx1, cx2 = col_bounds[col_i]
-    cy1, cy2 = row_bounds[row_i]
-    crop_chart = charts_img[cy1:cy2, cx1:cx2].copy()
+    # 1) Multi-line chart crop (from 12-charts.jpeg)
+    col_m, row_m = chart_multi_coords[well_id]
+    cmx1, cmy1 = col_m * chart_w_multi, row_m * chart_h_multi
+    cmx2, cmy2 = cmx1 + chart_w_multi, cmy1 + chart_h_multi
+    crop_multi = charts_multi_img[cmy1:cmy2, cmx1:cmx2].copy()
+    cv2.rectangle(crop_multi, (0, 0), (chart_w_multi-1, chart_h_multi-1), bgr_color, 2)
+    cv2.imwrite(os.path.join(split_multi_dir, f'chart_multi_{well_id}.png'), crop_multi)
+    split_multi_images[well_id] = Image.fromarray(cv2.cvtColor(crop_multi, cv2.COLOR_BGR2RGB))
 
-    # Border matching status color
-    cv2.rectangle(crop_chart, (0, 0), (crop_chart.shape[1]-1, crop_chart.shape[0]-1), bgr_color, 2)
+    # 2) Single-line chart crop (from 12-chart-single.png)
+    col_s, row_s = chart_single_coords[well_id]
+    csx1, csx2 = col_bounds_single[col_s]
+    csy1, csy2 = row_bounds_single[row_s]
+    crop_single = charts_single_img[csy1:csy2, csx1:csx2].copy()
+    cv2.rectangle(crop_single, (0, 0), (crop_single.shape[1]-1, crop_single.shape[0]-1), bgr_color, 2)
+    cv2.imwrite(os.path.join(split_single_dir, f'chart_single_{well_id}.png'), crop_single)
+    split_single_images[well_id] = Image.fromarray(cv2.cvtColor(crop_single, cv2.COLOR_BGR2RGB))
 
-    cv2.imwrite(os.path.join(split_dir, f'rank_{idx+1:02d}_chart_{well_id}.png'), crop_chart)
-    cv2.imwrite(os.path.join(split_dir, f'chart_{well_id}.png'), crop_chart)
-    split_chart_images[well_id] = Image.fromarray(cv2.cvtColor(crop_chart, cv2.COLOR_BGR2RGB))
-
-# Common dimensions & fonts
+# Common layout parameters
 num_cols = 12
 col_width = 300
 well_size = 220
-chart_disp_w = 280
-chart_disp_h = int(chart_disp_w * (350 / 535)) # Maintain aspect ratio (~183px)
+padding_x = 40
+footer_height = 40
 
 try:
     font_title = ImageFont.truetype('/System/Library/Fonts/Supplemental/Arial.ttf', 32)
@@ -138,147 +128,116 @@ try:
 except Exception:
     font_title = font_subtitle = font_legend = font_rank = font_dose = font_label = font_bar = ImageFont.load_default()
 
-# ==========================================
-# BUILD VERSION 1 (Standard Clean Composite)
-# ==========================================
-padding_x = 40
-header_height_v1 = 130
-col_header_height = 90
-row1_y_v1 = header_height_v1 + col_header_height + 20
-row2_y_v1 = row1_y_v1 + well_size + 60
-footer_height = 40
+def render_composite(chart_dict, chart_w_orig, chart_h_orig, subtitle_tag, is_v2=True, cyan_wells=False):
+    chart_disp_w = 280
+    chart_disp_h = int(chart_disp_w * (chart_h_orig / chart_w_orig))
 
-canvas_w = padding_x * 2 + num_cols * col_width
-canvas_h_v1 = row2_y_v1 + chart_disp_h + footer_height
+    header_h = 160 if is_v2 else 130
+    col_hdr_h = 90
+    r1_y = header_h + col_hdr_h + 20
+    colorbar_h = 36
+    gap = 75 if is_v2 else 60
+    r2_y = r1_y + well_size + gap
 
-canvas_v1 = Image.new('RGB', (canvas_w, canvas_h_v1), (18, 24, 38))
-draw_v1 = ImageDraw.Draw(canvas_v1)
+    c_w = padding_x * 2 + num_cols * col_width
+    c_h = r2_y + chart_disp_h + footer_height
 
-draw_v1.rectangle([(0, 0), (canvas_w, header_height_v1)], fill=(28, 36, 56))
-draw_v1.text((padding_x, 22), "Microbiology Antibiotic Dose Response Assay (v1 Standard)", fill=(255, 255, 255), font=font_title)
-draw_v1.text((padding_x, 72), "12 Wells & 12 Aligned Growth Charts Sorted by Antibiotic Dose (High -> Low)", fill=(0, 210, 255), font=font_subtitle)
+    canvas = Image.new('RGB', (c_w, c_h), (18, 24, 38))
+    draw = ImageDraw.Draw(canvas)
 
-for idx, (well_id, dose_str, dose_val, status, color_hex, status_rgb) in enumerate(dose_data):
-    col_x = padding_x + idx * col_width
-    center_x = col_x + col_width // 2
+    draw.rectangle([(0, 0), (c_w, header_h)], fill=(28, 36, 56))
+    draw.text((padding_x, 22), f"Microbiology Antibiotic Dose Response Assay ({subtitle_tag})", fill=(255, 255, 255), font=font_title)
+    draw.text((padding_x, 68), "12 Wells & 12 Aligned Growth Charts Sorted by Antibiotic Dose (High -> Low)", fill=(0, 210, 255), font=font_subtitle)
 
-    card_color = (25, 34, 52) if idx % 2 == 0 else (21, 29, 45)
-    draw_v1.rectangle([(col_x + 5, header_height_v1 + 10), (col_x + col_width - 5, canvas_h_v1 - 20)], fill=card_color, outline=(40, 52, 78), width=1)
-    draw_v1.text((center_x, header_height_v1 + 25), f"#{idx+1}  [{well_id}]", fill=(255, 205, 60), font=font_rank, anchor='mm')
-    
-    dose_lines = dose_str.split('\n')
-    y_text = header_height_v1 + 55
-    for l_idx, line in enumerate(dose_lines):
-        color = (100, 255, 180) if l_idx == 0 else (180, 180, 180)
-        draw_v1.text((center_x, y_text + l_idx * 18), line, fill=color, font=font_dose, anchor='mm')
+    if is_v2:
+        leg_y = 110
+        draw.rectangle([(padding_x, leg_y), (padding_x + 18, leg_y + 18)], fill=(16, 185, 129))
+        draw.text((padding_x + 26, leg_y), "Healthy (#1 - #4)", fill=(255, 255, 255), font=font_legend)
+        draw.rectangle([(padding_x + 220, leg_y), (padding_x + 238, leg_y + 18)], fill=(245, 158, 11))
+        draw.text((padding_x + 246, leg_y), "Sub-healthy (#5)", fill=(255, 255, 255), font=font_legend)
+        draw.rectangle([(padding_x + 440, leg_y), (padding_x + 458, leg_y + 18)], fill=(239, 68, 68))
+        draw.text((padding_x + 466, leg_y), "Infection (#6 - #12)", fill=(255, 255, 255), font=font_legend)
 
-    well_img = carved_well_images_cyan[well_id].resize((well_size, well_size), Image.Resampling.LANCZOS)
-    well_x = center_x - well_size // 2
-    well_y = row1_y_v1
-    canvas_v1.paste(well_img, (well_x, well_y), well_img)
+    for idx, (well_id, dose_str, dose_val, status, color_hex, status_rgb) in enumerate(dose_data):
+        col_x = padding_x + idx * col_width
+        center_x = col_x + col_width // 2
 
-    if idx == 0:
-        draw_v1.text((padding_x + 10, row1_y_v1 - 25), "WELLS (Carved & Highlighted)", fill=(255, 255, 255), font=font_label)
+        card_color = (25, 34, 52) if idx % 2 == 0 else (21, 29, 45)
+        draw.rectangle([(col_x + 5, header_h + 10), (col_x + col_width - 5, c_h - 20)], fill=card_color, outline=(40, 52, 78), width=1)
+        draw.text((center_x, header_h + 25), f"#{idx+1}  [{well_id}]", fill=(255, 205, 60), font=font_rank, anchor='mm')
 
-    line_x = center_x
-    draw_v1.line([(line_x, well_y + well_size + 8), (line_x, row2_y_v1 - 12)], fill=(0, 180, 230), width=2)
-    draw_v1.polygon([(line_x - 5, row2_y_v1 - 14), (line_x + 5, row2_y_v1 - 14), (line_x, row2_y_v1 - 6)], fill=(0, 180, 230))
+        dose_lines = dose_str.split('\n')
+        y_text = header_h + 55
+        for l_idx, line in enumerate(dose_lines):
+            color = status_rgb if (is_v2 and l_idx == 0) else ((100, 255, 180) if l_idx == 0 else (180, 180, 180))
+            draw.text((center_x, y_text + l_idx * 18), line, fill=color, font=font_dose, anchor='mm')
 
-    chart_img = split_chart_images[well_id].resize((chart_disp_w, chart_disp_h), Image.Resampling.LANCZOS)
-    chart_x = center_x - chart_disp_w // 2
-    chart_y = row2_y_v1
-    canvas_v1.paste(chart_img, (chart_x, chart_y))
-    draw_v1.rectangle([(chart_x, chart_y), (chart_x + chart_disp_w, chart_y + chart_disp_h)], outline=(60, 80, 120), width=1)
+        w_dict = carved_well_cyan if cyan_wells else carved_well_status
+        w_img = w_dict[well_id].resize((well_size, well_size), Image.Resampling.LANCZOS)
+        well_x = center_x - well_size // 2
+        well_y = r1_y
+        canvas.paste(w_img, (well_x, well_y), w_img)
 
-    if idx == 0:
-        draw_v1.text((padding_x + 10, row2_y_v1 - 25), "GROWTH CHARTS (1-1 Aligned)", fill=(255, 255, 255), font=font_label)
+        if idx == 0:
+            draw.text((padding_x + 10, r1_y - 25), "WELLS (Carved & Highlighted)", fill=(255, 255, 255), font=font_label)
 
-path_v1 = os.path.join(ws, 'sorted_wells_and_charts_v1_original.png')
-canvas_v1.save(path_v1)
-print(f"Saved Version 1 composite image to: {path_v1}")
+        if is_v2:
+            bar_y1 = well_y + well_size + 15
+            bar_y2 = bar_y1 + colorbar_h
+            bar_w = 260
+            bar_x1 = center_x - bar_w // 2
+            bar_x2 = center_x + bar_w // 2
+            draw.rounded_rectangle([(bar_x1, bar_y1), (bar_x2, bar_y2)], radius=8, fill=status_rgb, outline=(255, 255, 255), width=1)
+            t_col = (0, 0, 0) if status == 'Sub-Healthy' else (255, 255, 255)
+            draw.text((center_x, bar_y1 + colorbar_h // 2), status.upper(), fill=t_col, font=font_bar, anchor='mm')
 
-# ========================================================
-# BUILD VERSION 2 (Enhanced with Health Color Bars)
-# ========================================================
-header_height_v2 = 160
-row1_y_v2 = header_height_v2 + col_header_height + 20
-colorbar_height = 36
-gap_well_chart = 75
-row2_y_v2 = row1_y_v2 + well_size + gap_well_chart
+            draw.line([(center_x, well_y + well_size + 2), (center_x, bar_y1 - 2)], fill=status_rgb, width=2)
+            draw.line([(center_x, bar_y2 + 2), (center_x, r2_y - 8)], fill=status_rgb, width=2)
+            draw.polygon([(center_x - 5, r2_y - 10), (center_x + 5, r2_y - 10), (center_x, r2_y - 3)], fill=status_rgb)
+        else:
+            line_x = center_x
+            draw.line([(line_x, well_y + well_size + 8), (line_x, r2_y - 12)], fill=(0, 180, 230), width=2)
+            draw.polygon([(line_x - 5, r2_y - 14), (line_x + 5, r2_y - 14), (line_x, r2_y - 6)], fill=(0, 180, 230))
 
-canvas_h_v2 = row2_y_v2 + chart_disp_h + footer_height
-canvas_v2 = Image.new('RGB', (canvas_w, canvas_h_v2), (18, 24, 38))
-draw_v2 = ImageDraw.Draw(canvas_v2)
+        ch_img = chart_dict[well_id].resize((chart_disp_w, chart_disp_h), Image.Resampling.LANCZOS)
+        chart_x = center_x - chart_disp_w // 2
+        chart_y = r2_y
+        canvas.paste(ch_img, (chart_x, chart_y))
 
-draw_v2.rectangle([(0, 0), (canvas_w, header_height_v2)], fill=(28, 36, 56))
-draw_v2.text((padding_x, 22), "Microbiology Antibiotic Dose Response Assay (v2 Health Status)", fill=(255, 255, 255), font=font_title)
-draw_v2.text((padding_x, 68), "12 Wells & 12 Aligned Growth Charts Sorted by Antibiotic Dose (High -> Low)", fill=(0, 210, 255), font=font_subtitle)
+        outline_c = status_rgb if is_v2 else (60, 80, 120)
+        draw.rectangle([(chart_x, chart_y), (chart_x + chart_disp_w, chart_y + chart_disp_h)], outline=outline_c, width=2 if is_v2 else 1)
 
-# Legend Bar
-legend_y = 110
-draw_v2.rectangle([(padding_x, legend_y), (padding_x + 18, legend_y + 18)], fill=(16, 185, 129))
-draw_v2.text((padding_x + 26, legend_y), "Healthy (#1 - #4)", fill=(255, 255, 255), font=font_legend)
+        if idx == 0:
+            draw.text((padding_x + 10, r2_y - 25), "GROWTH CHARTS (1-1 Aligned)", fill=(255, 255, 255), font=font_label)
 
-draw_v2.rectangle([(padding_x + 220, legend_y), (padding_x + 238, legend_y + 18)], fill=(245, 158, 11))
-draw_v2.text((padding_x + 246, legend_y), "Sub-healthy (#5)", fill=(255, 255, 255), font=font_legend)
+    return canvas
 
-draw_v2.rectangle([(padding_x + 440, legend_y), (padding_x + 458, legend_y + 18)], fill=(239, 68, 68))
-draw_v2.text((padding_x + 466, legend_y), "Infection (#6 - #12)", fill=(255, 255, 255), font=font_legend)
+# Generate and save ALL versions:
+# 1) Multi-line chart version (v1 & v2)
+c_multi_v1 = render_composite(split_multi_images, 256, 154, "Multi-Line Charts - Standard", is_v2=False, cyan_wells=True)
+path_multi_v1 = os.path.join(ws, 'sorted_wells_and_multicharts_v1_clean.png')
+c_multi_v1.save(path_multi_v1)
 
-for idx, (well_id, dose_str, dose_val, status, color_hex, status_rgb) in enumerate(dose_data):
-    col_x = padding_x + idx * col_width
-    center_x = col_x + col_width // 2
+c_multi_v2 = render_composite(split_multi_images, 256, 154, "Multi-Line Charts - Health Status", is_v2=True, cyan_wells=False)
+path_multi_v2 = os.path.join(ws, 'sorted_wells_and_multicharts_v2_colorbars.png')
+c_multi_v2.save(path_multi_v2)
 
-    card_color = (25, 34, 52) if idx % 2 == 0 else (21, 29, 45)
-    draw_v2.rectangle([(col_x + 5, header_height_v2 + 10), (col_x + col_width - 5, canvas_h_v2 - 20)], fill=card_color, outline=(40, 52, 78), width=1)
+# 2) Single-line chart version (v1 & v2)
+c_single_v1 = render_composite(split_single_images, 535, 350, "Single-Line Chart - Standard", is_v2=False, cyan_wells=True)
+path_single_v1 = os.path.join(ws, 'sorted_wells_and_singlechart_v1_clean.png')
+c_single_v1.save(path_single_v1)
 
-    draw_v2.text((center_x, header_height_v2 + 25), f"#{idx+1}  [{well_id}]", fill=(255, 205, 60), font=font_rank, anchor='mm')
-    
-    dose_lines = dose_str.split('\n')
-    y_text = header_height_v2 + 55
-    for l_idx, line in enumerate(dose_lines):
-        color = status_rgb if l_idx == 0 else (180, 180, 180)
-        draw_v2.text((center_x, y_text + l_idx * 18), line, fill=color, font=font_dose, anchor='mm')
+c_single_v2 = render_composite(split_single_images, 535, 350, "Single-Line Chart - Health Status", is_v2=True, cyan_wells=False)
+path_single_v2 = os.path.join(ws, 'sorted_wells_and_singlechart_v2_colorbars.png')
+c_single_v2.save(path_single_v2)
 
-    well_img = carved_well_images_status[well_id].resize((well_size, well_size), Image.Resampling.LANCZOS)
-    well_x = center_x - well_size // 2
-    well_y = row1_y_v2
-    canvas_v2.paste(well_img, (well_x, well_y), well_img)
+# Save default main composite aliases
+c_single_v2.save(os.path.join(ws, 'sorted_wells_and_charts_row.png'))
+c_single_v2.save(os.path.join(ws, 'sorted_wells_and_charts_v2_colorbars.png'))
+c_single_v1.save(os.path.join(ws, 'sorted_wells_and_charts_v1_original.png'))
 
-    if idx == 0:
-        draw_v2.text((padding_x + 10, row1_y_v2 - 25), "WELLS (Carved & Highlighted)", fill=(255, 255, 255), font=font_label)
-
-    # Color bar
-    bar_y1 = well_y + well_size + 15
-    bar_y2 = bar_y1 + colorbar_height
-    bar_w = 260
-    bar_x1 = center_x - bar_w // 2
-    bar_x2 = center_x + bar_w // 2
-
-    draw_v2.rounded_rectangle([(bar_x1, bar_y1), (bar_x2, bar_y2)], radius=8, fill=status_rgb, outline=(255, 255, 255), width=1)
-    
-    text_color = (0, 0, 0) if status == 'Sub-Healthy' else (255, 255, 255)
-    draw_v2.text((center_x, bar_y1 + colorbar_height // 2), status.upper(), fill=text_color, font=font_bar, anchor='mm')
-
-    draw_v2.line([(center_x, well_y + well_size + 2), (center_x, bar_y1 - 2)], fill=status_rgb, width=2)
-    draw_v2.line([(center_x, bar_y2 + 2), (center_x, row2_y_v2 - 8)], fill=status_rgb, width=2)
-    draw_v2.polygon([(center_x - 5, row2_y_v2 - 10), (center_x + 5, row2_y_v2 - 10), (center_x, row2_y_v2 - 3)], fill=status_rgb)
-
-    chart_img = split_chart_images[well_id].resize((chart_disp_w, chart_disp_h), Image.Resampling.LANCZOS)
-    chart_x = center_x - chart_disp_w // 2
-    chart_y = row2_y_v2
-    canvas_v2.paste(chart_img, (chart_x, chart_y))
-
-    draw_v2.rectangle([(chart_x, chart_y), (chart_x + chart_disp_w, chart_y + chart_disp_h)], outline=status_rgb, width=2)
-
-    if idx == 0:
-        draw_v2.text((padding_x + 10, row2_y_v2 - 25), "GROWTH CHARTS (1-1 Aligned)", fill=(255, 255, 255), font=font_label)
-
-path_v2 = os.path.join(ws, 'sorted_wells_and_charts_v2_colorbars.png')
-canvas_v2.save(path_v2)
-print(f"Saved Version 2 composite image to: {path_v2}")
-
-# Main composite alias pointing to V2
-path_main = os.path.join(ws, 'sorted_wells_and_charts_row.png')
-canvas_v2.save(path_main)
-print("Updated sorted_wells_and_charts_row.png")
+print("Generated all versions without overwriting any previous assets:")
+print(f" - {path_multi_v1}")
+print(f" - {path_multi_v2}")
+print(f" - {path_single_v1}")
+print(f" - {path_single_v2}")

@@ -4,9 +4,9 @@
 ![OpenCV](https://img.shields.io/badge/OpenCV-Image%20Processing-5C3EE8?style=flat&logo=opencv&logoColor=white)
 ![Pillow](https://img.shields.io/badge/Pillow-PIL-000000?style=flat)
 
-An automated image processing and analysis pipeline for microbiology dose-response assays featuring both standard aligned visualization and health transition state classification.
+An automated image processing and analysis pipeline for microbiology dose-response assays, supporting both multi-line and single-line growth curve datasets, standard aligned layouts, and health transition state classification.
 
-This repository processes 12-well microplate photos (`12-wells.jpeg`), splits multi-panel growth curves (`12-charts.jpeg`), correlates them 1-to-1 with experimental layout concentration annotations (`12-layout.png`), and outputs high-to-low antibiotic concentration sorted visualizations.
+This repository processes 12-well microplate photos (`12-wells.jpeg`), multi-curve growth plots (`12-charts.jpeg`), high-res single-curve growth plots (`12-chart-single.png`), and maps them 1-to-1 against concentration layout mapping (`12-layout.png`).
 
 ---
 
@@ -15,42 +15,48 @@ This repository processes 12-well microplate photos (`12-wells.jpeg`), splits mu
 > **Original Prompt**:
 > "I have 3 pictures (12 wells , 12 charts, 12 layout). 1. For the 12 wells, please highlight each well and carve out as an image (totally 12).  2. For the 12 charts, split into 12 individual charts. 3. Now create a new image, line the 12 carved-out wells in a row, and line the 12 charts in a row, below the wells (1 chart aligns with 1 well).   Keep in mind, the locations of wells and charts in original pictures have 1-1 mapping, and when making them in a row, I want to sort (high => low) by the antibiotic doses info in the 12-layout picture."
 >
-> **Enhancement Prompt**:
+> **Enhancement Prompt (Color-Bars)**:
 > "Great! I want to enhance the final image to indicate the transition from healthy (#1 ~ #4, with green color), sub-healthy (#5, yellow color), infection (the rest, red color). insert a color-bar in-between each well-image and chart-image"
+>
+> **New Dataset Prompt**:
+> "I added a new 12-chart-single, would like to see the effect of using it to replace the earlier 12-charts. Please analyze the chart image to remove the X/Y ledgend, for more precise splitting"
 
 ---
 
-## 📸 Output Visualizations (Both Versions Retained)
+## 📸 Output Visualizations (All Versions Retained)
 
-### Version 2: Health Transition Color-Bars (Enhanced)
-Features color status indicator bars inserted in-between each well and chart, matching accent borders, and top legend.
-![Version 2: Color-Bars](sorted_wells_and_charts_v2_colorbars.png)
+### 1. Single-Line Growth Curves (`12-chart-single.png`)
+
+#### Version 2: Health Transition Color-Bars (Enhanced)
+File: `sorted_wells_and_singlechart_v2_colorbars.png`
+![Single Chart Color-Bars](sorted_wells_and_singlechart_v2_colorbars.png)
+
+#### Version 1: Standard Clean Alignment
+File: `sorted_wells_and_singlechart_v1_clean.png`
+![Single Chart Clean](sorted_wells_and_singlechart_v1_clean.png)
 
 ---
 
-### Version 1: Standard Clean Row Alignment (Original)
-Features clean high-to-low concentration row layout with cyan well highlights.
-![Version 1: Standard Clean](sorted_wells_and_charts_v1_original.png)
+### 2. Multi-Line Growth Curves (`12-charts.jpeg`)
+
+#### Version 2: Health Transition Color-Bars (Enhanced)
+File: `sorted_wells_and_multicharts_v2_colorbars.png`
+![Multi Chart Color-Bars](sorted_wells_and_multicharts_v2_colorbars.png)
+
+#### Version 1: Standard Clean Alignment
+File: `sorted_wells_and_multicharts_v1_clean.png`
+![Multi Chart Clean](sorted_wells_and_multicharts_v1_clean.png)
 
 ---
 
-## ✨ Key Features
+## ✨ Summary of Available Versions
 
-1. **Dual Composite Output**:
-   - `sorted_wells_and_charts_v1_original.png`: Standard dose-sorted row visualization.
-   - `sorted_wells_and_charts_v2_colorbars.png`: Enhanced visualization with in-between health transition color bars.
-2. **In-Between Health Status Color-Bars (v2)**:
-   - 🟩 **Healthy** (#1–#4): Green (`#10B981`)
-   - 🟨 **Sub-Healthy** (#5): Yellow (`#F59E0B`)
-   - 🟥 **Infection** (#6–#12): Red (`#EF4444`)
-3. **Well Extraction & Highlighting**:
-   - Automatically crops all 12 microplate wells into transparent RGBA circular images with accent highlights.
-4. **Growth Curve Splitting**:
-   - Crops each individual growth plot from the 3x4 panel grid.
-5. **Antibiotic Dose Sorting (High → Low)**:
-   - Maps each position (A1..C4) to its corresponding antibiotic concentration (50 µg/mL down to 0 µg/mL).
-6. **1-to-1 Vertical Alignment**:
-   - Positions each growth curve chart directly beneath its corresponding microplate well.
+| Version File | Chart Dataset Used | Layout Style | Color Bars |
+| :--- | :--- | :---: | :---: |
+| [`sorted_wells_and_singlechart_v2_colorbars.png`](sorted_wells_and_singlechart_v2_colorbars.png) | `12-chart-single.png` (High-Res) | Health Transition | 🟢 🟡 🔴 |
+| [`sorted_wells_and_singlechart_v1_clean.png`](sorted_wells_and_singlechart_v1_clean.png) | `12-chart-single.png` (High-Res) | Standard Clean | Cyan Accents |
+| [`sorted_wells_and_multicharts_v2_colorbars.png`](sorted_wells_and_multicharts_v2_colorbars.png) | `12-charts.jpeg` (Multi-line) | Health Transition | 🟢 🟡 🔴 |
+| [`sorted_wells_and_multicharts_v1_clean.png`](sorted_wells_and_multicharts_v1_clean.png) | `12-charts.jpeg` (Multi-line) | Standard Clean | Cyan Accents |
 
 ---
 
@@ -77,29 +83,25 @@ Features clean high-to-low concentration row layout with cyan well highlights.
 
 ```
 MicroBiology/
-├── process_microbiology.py                 # Script generating both V1 & V2 visualizations
-├── 12-wells.jpeg                           # Original 12-well plate image
-├── 12-charts.jpeg                          # Original 12-panel growth curve plots
-├── 12-layout.png                           # Original 12-well layout diagram
-├── carved_wells/                           # 12 individual cropped well images
-├── split_charts/                           # 12 individual cropped growth curve charts
-├── sorted_wells_and_charts_v1_original.png # Version 1: Standard clean composite
-├── sorted_wells_and_charts_v2_colorbars.png# Version 2: Health status color-bars composite
-└── sorted_wells_and_charts_row.png         # Main composite output alias (V2)
+├── process_microbiology.py                   # Automation pipeline generating all composite versions
+├── 12-wells.jpeg                             # Raw 12-well microplate photo
+├── 12-charts.jpeg                            # Raw multi-line growth curve plots
+├── 12-chart-single.png                       # High-res single-line growth curve plots
+├── 12-layout.png                             # Raw layout diagram
+├── carved_wells/                             # 12 circular RGBA carved well images
+├── split_charts_multi/                       # 12 split multi-line chart images
+├── split_charts_single/                      # 12 split single-line chart images (legend removed)
+├── sorted_wells_and_singlechart_v2_colorbars.png
+├── sorted_wells_and_singlechart_v1_clean.png
+├── sorted_wells_and_multicharts_v2_colorbars.png
+└── sorted_wells_and_multicharts_v1_clean.png
 ```
 
 ---
 
 ## 🚀 Quick Start
 
-### 1. Install Dependencies
-```bash
-pip install opencv-python pillow numpy
-```
-
-### 2. Run Processing Pipeline
 ```bash
 python process_microbiology.py
 ```
-
-Running the script automatically produces both **Version 1** (`sorted_wells_and_charts_v1_original.png`) and **Version 2** (`sorted_wells_and_charts_v2_colorbars.png`).
+Running `process_microbiology.py` automatically generates all composite image versions and populates both split chart directories.
