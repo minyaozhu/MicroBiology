@@ -181,11 +181,8 @@ for idx, (well_id, dose_str, dose_val, status, color_hex, status_rgb) in enumera
     if idx == 0:
         draw.text((padding_x + 10, row2_y - 25), "GROWTH CHARTS (1-1 Aligned)", fill=(255, 255, 255), font=font_label)
 
-# Save exact requested filename sorted_wells_and_chartsv2_v2_colorbars.png as well as sorted_wells_and_charts_row.png
+# Save target file sorted_wells_and_chartsv2_v2_colorbars.png
 out_path_v2 = os.path.join(ws, 'sorted_wells_and_chartsv2_v2_colorbars.png')
-out_path_row = os.path.join(ws, 'sorted_wells_and_charts_row.png')
-
 canvas.save(out_path_v2)
-canvas.save(out_path_row)
 
 print(f"Saved image to: {out_path_v2}")
