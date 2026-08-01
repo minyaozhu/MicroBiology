@@ -8,15 +8,18 @@ ws = '/Users/minyaozhu/Desktop/MicroBiology'
 carved_dir = os.path.join(ws, 'carved_wells')
 split_multi_dir = os.path.join(ws, 'split_charts_multi')
 split_single_dir = os.path.join(ws, 'split_charts_single')
+split_v2_dir = os.path.join(ws, 'split_charts_v2')
 
 os.makedirs(carved_dir, exist_ok=True)
 os.makedirs(split_multi_dir, exist_ok=True)
 os.makedirs(split_single_dir, exist_ok=True)
+os.makedirs(split_v2_dir, exist_ok=True)
 
 # 1. Load source images
 wells_img = cv2.imread(os.path.join(ws, '12-wells.jpeg'))
 charts_multi_img = cv2.imread(os.path.join(ws, '12-charts.jpeg'))
 charts_single_img = cv2.imread(os.path.join(ws, '12-chart-single.png'))
+charts_v2_img = cv2.imread(os.path.join(ws, '12-charts-v2.jpg'))
 
 # Centers and radius for wells (1024x650)
 well_centers = {
@@ -44,6 +47,15 @@ chart_single_coords = {
     'C1': (0, 2), 'C2': (1, 2), 'C3': (2, 2), 'C4': (3, 2),
 }
 
+# 12-charts-v2.jpg bounds (1868 x 842)
+col_bounds_v2 = [(0, 467), (467, 934), (934, 1401), (1401, 1868)]
+row_bounds_v2 = [(0, 276), (280, 556), (560, 840)]
+chart_v2_coords = {
+    'A1': (0, 0), 'A2': (1, 0), 'A3': (2, 0), 'A4': (3, 0),
+    'B1': (0, 1), 'B2': (1, 1), 'B3': (2, 1), 'B4': (3, 1),
+    'C1': (0, 2), 'C2': (1, 2), 'C3': (2, 2), 'C4': (3, 2),
+}
+
 dose_data = [
     ('A1', '50 ug/mL\n(No Bacteria)', 50.0, 'Healthy', '#10B981', (16, 185, 129)),
     ('A2', '25 ug/mL', 25.0, 'Healthy', '#10B981', (16, 185, 129)),
@@ -63,6 +75,7 @@ carved_well_cyan = {}
 carved_well_status = {}
 split_multi_images = {}
 split_single_images = {}
+split_v2_images = {}
 
 # Process each position
 for idx, (well_id, dose_str, dose_val, status, color_hex, status_rgb) in enumerate(dose_data):
@@ -92,7 +105,7 @@ for idx, (well_id, dose_str, dose_val, status, color_hex, status_rgb) in enumera
     carved_well_status[well_id] = Image.fromarray(cv2.cvtColor(rgba_v2, cv2.COLOR_BGRA2RGBA))
     cv2.imwrite(os.path.join(carved_dir, f'well_{well_id}.png'), rgba_v2)
 
-    # 1) Multi-line chart crop (from 12-charts.jpeg)
+    # 1) Multi-line chart crop (12-charts.jpeg)
     col_m, row_m = chart_multi_coords[well_id]
     cmx1, cmy1 = col_m * chart_w_multi, row_m * chart_h_multi
     cmx2, cmy2 = cmx1 + chart_w_multi, cmy1 + chart_h_multi
@@ -101,7 +114,7 @@ for idx, (well_id, dose_str, dose_val, status, color_hex, status_rgb) in enumera
     cv2.imwrite(os.path.join(split_multi_dir, f'chart_multi_{well_id}.png'), crop_multi)
     split_multi_images[well_id] = Image.fromarray(cv2.cvtColor(crop_multi, cv2.COLOR_BGR2RGB))
 
-    # 2) Single-line chart crop (from 12-chart-single.png)
+    # 2) Single-line chart crop (12-chart-single.png)
     col_s, row_s = chart_single_coords[well_id]
     csx1, csx2 = col_bounds_single[col_s]
     csy1, csy2 = row_bounds_single[row_s]
@@ -109,6 +122,15 @@ for idx, (well_id, dose_str, dose_val, status, color_hex, status_rgb) in enumera
     cv2.rectangle(crop_single, (0, 0), (crop_single.shape[1]-1, crop_single.shape[0]-1), bgr_color, 2)
     cv2.imwrite(os.path.join(split_single_dir, f'chart_single_{well_id}.png'), crop_single)
     split_single_images[well_id] = Image.fromarray(cv2.cvtColor(crop_single, cv2.COLOR_BGR2RGB))
+
+    # 3) 12-charts-v2.jpg crop
+    col_v2, row_v2 = chart_v2_coords[well_id]
+    cv2x1, cv2x2 = col_bounds_v2[col_v2]
+    cv2y1, cv2y2 = row_bounds_v2[row_v2]
+    crop_v2 = charts_v2_img[cv2y1:cv2y2, cv2x1:cv2x2].copy()
+    cv2.rectangle(crop_v2, (0, 0), (crop_v2.shape[1]-1, crop_v2.shape[0]-1), bgr_color, 2)
+    cv2.imwrite(os.path.join(split_v2_dir, f'chart_v2_{well_id}.png'), crop_v2)
+    split_v2_images[well_id] = Image.fromarray(cv2.cvtColor(crop_v2, cv2.COLOR_BGR2RGB))
 
 # Common layout parameters
 num_cols = 12
@@ -212,32 +234,35 @@ def render_composite(chart_dict, chart_w_orig, chart_h_orig, subtitle_tag, is_v2
 
     return canvas
 
-# Generate and save ALL versions:
-# 1) Multi-line chart version (v1 & v2)
-c_multi_v1 = render_composite(split_multi_images, 256, 154, "Multi-Line Charts - Standard", is_v2=False, cyan_wells=True)
-path_multi_v1 = os.path.join(ws, 'sorted_wells_and_multicharts_v1_clean.png')
-c_multi_v1.save(path_multi_v1)
+# Generate and save ALL versions across 3 datasets:
+# 1) 12-charts-v2.jpg dataset
+c_v2_v2 = render_composite(split_v2_images, 467, 276, "Charts v2 Dataset - Health Status", is_v2=True, cyan_wells=False)
+path_v2_v2 = os.path.join(ws, 'sorted_wells_and_chartsv2_v2_colorbars.png')
+c_v2_v2.save(path_v2_v2)
 
-c_multi_v2 = render_composite(split_multi_images, 256, 154, "Multi-Line Charts - Health Status", is_v2=True, cyan_wells=False)
-path_multi_v2 = os.path.join(ws, 'sorted_wells_and_multicharts_v2_colorbars.png')
-c_multi_v2.save(path_multi_v2)
+c_v2_v1 = render_composite(split_v2_images, 467, 276, "Charts v2 Dataset - Standard", is_v2=False, cyan_wells=True)
+path_v2_v1 = os.path.join(ws, 'sorted_wells_and_chartsv2_v1_clean.png')
+c_v2_v1.save(path_v2_v1)
 
-# 2) Single-line chart version (v1 & v2)
-c_single_v1 = render_composite(split_single_images, 535, 350, "Single-Line Chart - Standard", is_v2=False, cyan_wells=True)
-path_single_v1 = os.path.join(ws, 'sorted_wells_and_singlechart_v1_clean.png')
-c_single_v1.save(path_single_v1)
-
+# 2) 12-chart-single.png dataset
 c_single_v2 = render_composite(split_single_images, 535, 350, "Single-Line Chart - Health Status", is_v2=True, cyan_wells=False)
 path_single_v2 = os.path.join(ws, 'sorted_wells_and_singlechart_v2_colorbars.png')
 c_single_v2.save(path_single_v2)
 
-# Save default main composite aliases
-c_single_v2.save(os.path.join(ws, 'sorted_wells_and_charts_row.png'))
-c_single_v2.save(os.path.join(ws, 'sorted_wells_and_charts_v2_colorbars.png'))
-c_single_v1.save(os.path.join(ws, 'sorted_wells_and_charts_v1_original.png'))
+c_single_v1 = render_composite(split_single_images, 535, 350, "Single-Line Chart - Standard", is_v2=False, cyan_wells=True)
+path_single_v1 = os.path.join(ws, 'sorted_wells_and_singlechart_v1_clean.png')
+c_single_v1.save(path_single_v1)
 
-print("Generated all versions without overwriting any previous assets:")
-print(f" - {path_multi_v1}")
-print(f" - {path_multi_v2}")
-print(f" - {path_single_v1}")
-print(f" - {path_single_v2}")
+# 3) 12-charts.jpeg dataset
+c_multi_v2 = render_composite(split_multi_images, 256, 154, "Multi-Line Charts - Health Status", is_v2=True, cyan_wells=False)
+path_multi_v2 = os.path.join(ws, 'sorted_wells_and_multicharts_v2_colorbars.png')
+c_multi_v2.save(path_multi_v2)
+
+c_multi_v1 = render_composite(split_multi_images, 256, 154, "Multi-Line Charts - Standard", is_v2=False, cyan_wells=True)
+path_multi_v1 = os.path.join(ws, 'sorted_wells_and_multicharts_v1_clean.png')
+c_multi_v1.save(path_multi_v1)
+
+# Main composite alias pointing to v2_v2
+c_v2_v2.save(os.path.join(ws, 'sorted_wells_and_charts_row.png'))
+
+print("Generated all versions for 12-charts-v2.jpg, 12-chart-single.png, and 12-charts.jpeg successfully!")
