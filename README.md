@@ -22,7 +22,11 @@ This repository processes 12-well microplate photos (`12-wells.jpeg`), splits mu
 
 ## 📸 Output Preview
 
+### Latest Generated Output (`sorted_wells_and_chartsv2_v2_colorbars.png`)
 ![Microbiology Dose-Response Row Composite](sorted_wells_and_chartsv2_v2_colorbars.png)
+
+### Reference / Benchmark (`claude_result.png`)
+![Claude Result](claude_result.png)
 
 ---
 
@@ -68,14 +72,15 @@ This repository processes 12-well microplate photos (`12-wells.jpeg`), splits mu
 
 ```
 MicroBiology/
-├── process_microbiology.py                 # Main processing script
-├── 12-wells.jpeg                           # Source 12-well plate photo
-├── 12-charts-v2.jpg                        # Source 12-chart photo (latest)
-├── 12-layout.png                           # Source layout diagram
-├── carved_wells/                           # 12 circular RGBA carved well images
-├── split_charts/                           # 12 split chart images (from 12-charts-v2.jpg)
-├── sorted_wells_and_chartsv2_v2_colorbars.png # Final aligned row composite image
-└── README.md                               # Project documentation
+├── process_microbiology.py                    # Main processing script
+├── 12-wells.jpeg                              # Source 12-well plate photo
+├── 12-charts-v2.jpg                           # Source 12-chart photo (latest)
+├── 12-layout.png                              # Source layout diagram
+├── claude_result.png                          # Reference Claude result image
+├── carved_wells/                              # 12 circular RGBA carved well images
+├── split_charts/                              # 12 split chart images (from 12-charts-v2.jpg)
+├── sorted_wells_and_chartsv2_v2_colorbars.png    # Final aligned row composite image
+└── README.md                                  # Project documentation
 ```
 
 ---
