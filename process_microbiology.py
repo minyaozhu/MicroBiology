@@ -11,7 +11,8 @@ os.makedirs(split_dir, exist_ok=True)
 
 # 1. Load images
 wells_img = cv2.imread(os.path.join(ws, '12-wells.jpeg'))
-charts_img = cv2.imread(os.path.join(ws, '12-charts.jpeg'))
+# Use new high-res single chart image 12-chart-single.png
+charts_img = cv2.imread(os.path.join(ws, '12-chart-single.png'))
 
 # Centers and radius for wells (1024x650)
 well_centers = {
@@ -21,14 +22,34 @@ well_centers = {
 }
 r_well = 102
 
-# Chart grid dimensions (1024x462)
-chart_w = 1024 // 4 # 256
-chart_h = 462 // 3 # 154
+# Coordinates in 12-chart-single.png (2498 x 1294)
+# 4 columns, 3 rows cropped precisely to remove global X/Y legends ("Signal (a.u.)", "Time (a.u.)")
+col_bounds = [
+    (90, 625),
+    (700, 1235),
+    (1300, 1835),
+    (1900, 2435)
+]
+row_bounds = [
+    (0, 350),
+    (400, 750),
+    (800, 1150)
+]
 
-chart_coords = {
-    'A1': (0, 0), 'A2': (1, 0), 'A3': (2, 0), 'A4': (3, 0),
-    'B1': (0, 1), 'B2': (1, 1), 'B3': (2, 1), 'B4': (3, 1),
-    'C1': (0, 2), 'C2': (1, 2), 'C3': (2, 2), 'C4': (3, 2),
+# Map well_id to (col_index, row_index) in 12-chart-single.png
+chart_single_coords = {
+    'A1': (0, 0), # Panel 1
+    'A2': (1, 0), # Panel 2
+    'A3': (2, 0), # Panel 3
+    'A4': (3, 0), # Panel 4
+    'B4': (3, 1), # Panel 5
+    'B3': (2, 1), # Panel 6
+    'B2': (1, 1), # Panel 7
+    'B1': (0, 1), # Panel 8
+    'C1': (0, 2), # Panel 9
+    'C2': (1, 2), # Panel 10
+    'C3': (2, 2), # Panel 11
+    'C4': (3, 2), # Panel 12
 }
 
 # Dose data sorted High to Low with Health Status mapping:
@@ -86,14 +107,15 @@ for idx, (well_id, dose_str, dose_val, status, color_hex, status_rgb) in enumera
     cv2.imwrite(os.path.join(carved_dir, f'rank_{idx+1:02d}_well_{well_id}.png'), rgba_v2)
     cv2.imwrite(os.path.join(carved_dir, f'well_{well_id}.png'), rgba_v2)
 
-    # Chart crop
-    col, row = chart_coords[well_id]
-    cx1 = col * chart_w
-    cy1 = row * chart_h
-    cx2 = cx1 + chart_w
-    cy2 = cy1 + chart_h
+    # --- Extract Chart from 12-chart-single.png ---
+    col_i, row_i = chart_single_coords[well_id]
+    cx1, cx2 = col_bounds[col_i]
+    cy1, cy2 = row_bounds[row_i]
     crop_chart = charts_img[cy1:cy2, cx1:cx2].copy()
-    cv2.rectangle(crop_chart, (0, 0), (chart_w-1, chart_h-1), bgr_color, 2)
+
+    # Border matching status color
+    cv2.rectangle(crop_chart, (0, 0), (crop_chart.shape[1]-1, crop_chart.shape[0]-1), bgr_color, 2)
+
     cv2.imwrite(os.path.join(split_dir, f'rank_{idx+1:02d}_chart_{well_id}.png'), crop_chart)
     cv2.imwrite(os.path.join(split_dir, f'chart_{well_id}.png'), crop_chart)
     split_chart_images[well_id] = Image.fromarray(cv2.cvtColor(crop_chart, cv2.COLOR_BGR2RGB))
@@ -103,7 +125,7 @@ num_cols = 12
 col_width = 300
 well_size = 220
 chart_disp_w = 280
-chart_disp_h = int(chart_disp_w * (chart_h / chart_w))
+chart_disp_h = int(chart_disp_w * (350 / 535)) # Maintain aspect ratio (~183px)
 
 try:
     font_title = ImageFont.truetype('/System/Library/Fonts/Supplemental/Arial.ttf', 32)
