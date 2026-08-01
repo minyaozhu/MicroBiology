@@ -33,10 +33,6 @@ chart_coords = {
     'C1': (0, 2), 'C2': (1, 2), 'C3': (2, 2), 'C4': (3, 2),
 }
 
-# Dose data sorted High to Low with Health Status mapping:
-# #1~#4: Healthy (Green)
-# #5: Sub-healthy (Yellow)
-# #6~#12: Infection (Red)
 dose_data = [
     ('A1', '50 ug/mL\n(No Bacteria)', 50.0, 'Healthy', '#10B981', (16, 185, 129)),
     ('A2', '25 ug/mL', 25.0, 'Healthy', '#10B981', (16, 185, 129)),
@@ -57,7 +53,6 @@ split_chart_images = {}
 
 # Extract each position
 for idx, (well_id, dose_str, dose_val, status, color_hex, status_rgb) in enumerate(dose_data):
-    # --- Extract & Highlight Well ---
     cx, cy = well_centers[well_id]
     x1, y1 = cx - r_well - 5, cy - r_well - 5
     x2, y2 = cx + r_well + 5, cy + r_well + 5
@@ -79,7 +74,6 @@ for idx, (well_id, dose_str, dose_val, status, color_hex, status_rgb) in enumera
     cv2.imwrite(out_well_path, rgba)
     carved_well_images[well_id] = Image.fromarray(cv2.cvtColor(rgba, cv2.COLOR_BGRA2RGBA))
 
-    # --- Extract Chart ---
     col_i, row_i = chart_coords[well_id]
     cx1, cx2 = col_bounds[col_i]
     cy1, cy2 = row_bounds[row_i]
@@ -92,12 +86,12 @@ for idx, (well_id, dose_str, dose_val, status, color_hex, status_rgb) in enumera
 
 print("Extracted 12 carved wells and 12 split charts.")
 
-# --- Build High-Resolution Composite Image ---
+# Composite Image
 num_cols = 12
 col_width = 300
 well_size = 220
 chart_disp_w = 280
-chart_disp_h = int(chart_disp_w * (276 / 467)) # ~165px
+chart_disp_h = int(chart_disp_w * (276 / 467))
 
 padding_x = 40
 header_height = 160
@@ -114,7 +108,6 @@ canvas_h = row2_y + chart_disp_h + footer_height
 canvas = Image.new('RGB', (canvas_w, canvas_h), (18, 24, 38))
 draw = ImageDraw.Draw(canvas)
 
-# Fonts
 try:
     font_title = ImageFont.truetype('/System/Library/Fonts/Supplemental/Arial.ttf', 32)
     font_subtitle = ImageFont.truetype('/System/Library/Fonts/Supplemental/Arial.ttf', 18)
@@ -126,12 +119,10 @@ try:
 except Exception:
     font_title = font_subtitle = font_legend = font_rank = font_dose = font_label = font_bar = ImageFont.load_default()
 
-# Header banner
 draw.rectangle([(0, 0), (canvas_w, header_height)], fill=(28, 36, 56))
 draw.text((padding_x, 22), "Microbiology Antibiotic Dose Response Assay", fill=(255, 255, 255), font=font_title)
 draw.text((padding_x, 68), "12 Wells & 12 Aligned Growth Charts Sorted by Antibiotic Dose (High -> Low)", fill=(0, 210, 255), font=font_subtitle)
 
-# Legend Bar
 legend_y = 110
 draw.rectangle([(padding_x, legend_y), (padding_x + 18, legend_y + 18)], fill=(16, 185, 129))
 draw.text((padding_x + 26, legend_y), "Healthy (#1 - #4)", fill=(255, 255, 255), font=font_legend)
@@ -165,7 +156,6 @@ for idx, (well_id, dose_str, dose_val, status, color_hex, status_rgb) in enumera
     if idx == 0:
         draw.text((padding_x + 10, row1_y - 25), "WELLS (Carved & Highlighted)", fill=(255, 255, 255), font=font_label)
 
-    # Color bar
     bar_y1 = well_y + well_size + 15
     bar_y2 = bar_y1 + colorbar_height
     bar_w = 260
@@ -191,6 +181,11 @@ for idx, (well_id, dose_str, dose_val, status, color_hex, status_rgb) in enumera
     if idx == 0:
         draw.text((padding_x + 10, row2_y - 25), "GROWTH CHARTS (1-1 Aligned)", fill=(255, 255, 255), font=font_label)
 
-out_composite_path = os.path.join(ws, 'sorted_wells_and_charts_row.png')
-canvas.save(out_composite_path)
-print(f"Saved latest composite image to: {out_composite_path}")
+# Save exact requested filename sorted_wells_and_chartsv2_v2_colorbars.png as well as sorted_wells_and_charts_row.png
+out_path_v2 = os.path.join(ws, 'sorted_wells_and_chartsv2_v2_colorbars.png')
+out_path_row = os.path.join(ws, 'sorted_wells_and_charts_row.png')
+
+canvas.save(out_path_v2)
+canvas.save(out_path_row)
+
+print(f"Saved image to: {out_path_v2}")

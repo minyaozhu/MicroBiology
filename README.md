@@ -12,7 +12,7 @@ This repository processes 12-well microplate photos (`12-wells.jpeg`), splits mu
 
 ## 📸 Output Preview
 
-![Microbiology Dose-Response Row Composite](sorted_wells_and_charts_row.png)
+![Microbiology Dose-Response Row Composite](sorted_wells_and_chartsv2_v2_colorbars.png)
 
 ---
 
@@ -58,14 +58,14 @@ This repository processes 12-well microplate photos (`12-wells.jpeg`), splits mu
 
 ```
 MicroBiology/
-├── process_microbiology.py          # Main processing script for the latest version
-├── 12-wells.jpeg                    # Source 12-well plate photo
-├── 12-charts-v2.jpg                 # Source 12-chart photo (latest)
-├── 12-layout.png                    # Source layout diagram
-├── carved_wells/                    # 12 circular RGBA carved well images
-├── split_charts/                    # 12 split chart images (from 12-charts-v2.jpg)
-├── sorted_wells_and_charts_row.png  # Final aligned row composite image
-└── README.md                        # Project documentation
+├── process_microbiology.py                 # Main processing script
+├── 12-wells.jpeg                           # Source 12-well plate photo
+├── 12-charts-v2.jpg                        # Source 12-chart photo (latest)
+├── 12-layout.png                           # Source layout diagram
+├── carved_wells/                           # 12 circular RGBA carved well images
+├── split_charts/                           # 12 split chart images (from 12-charts-v2.jpg)
+├── sorted_wells_and_chartsv2_v2_colorbars.png # Final aligned row composite image
+└── README.md                               # Project documentation
 ```
 
 ---
@@ -82,4 +82,4 @@ pip install opencv-python pillow numpy
 python process_microbiology.py
 ```
 
-All extracted images will be generated in `carved_wells/`, `split_charts/`, and the combined composite image will be saved as `sorted_wells_and_charts_row.png`.
+All extracted images will be generated in `carved_wells/`, `split_charts/`, and the combined composite image will be saved as `sorted_wells_and_chartsv2_v2_colorbars.png`.
