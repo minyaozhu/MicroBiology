@@ -10,6 +10,16 @@ This repository processes 12-well microplate photos (`12-wells.jpeg`), splits mu
 
 ---
 
+## 💬 Prompts
+
+> **Original Prompt**:
+> "I have 3 pictures (12 wells , 12 charts, 12 layout). 1. For the 12 wells, please highlight each well and carve out as an image (totally 12).  2. For the 12 charts, split into 12 individual charts. 3. Now create a new image, line the 12 carved-out wells in a row, and line the 12 charts in a row, below the wells (1 chart aligns with 1 well).   Keep in mind, the locations of wells and charts in original pictures have 1-1 mapping, and when making them in a row, I want to sort (high => low) by the antibiotic doses info in the 12-layout picture."
+
+> **Enhancement Prompt**:
+> "Great! I want to enhance the final image to indicate the transition from healthy (#1 ~ #4, with green color), sub-healthy (#5, yellow color), infection (the rest, red color). insert a color-bar in-between each well-image and chart-image"
+
+---
+
 ## 📸 Output Preview
 
 ![Microbiology Dose-Response Row Composite](sorted_wells_and_chartsv2_v2_colorbars.png)
